@@ -54,8 +54,10 @@ public class GameController {
         Partida partida = partidaRepository.findById(id).orElse(null);
         if (partida != null) {
             if ("Noche".equals(partida.getFase())) {
+                procesarVotosLobos(partida);
                 partida.setFase("Día");
-            } else {
+            } else if ("Día".equals(partida.getFase())) {
+                procesarVotosAldeanos(partida);
                 partida.setFase("Noche");
             }
             partidaRepository.save(partida);
@@ -116,23 +118,46 @@ public class GameController {
     public Partida procesarVotos(@PathVariable Long id) {
         Partida partida = partidaRepository.findById(id).orElse(null);
         if (partida != null) {
-            List<Jugador> jugadores = partida.getJugadores();
-            Jugador jugadorEliminado = jugadores.stream()
-                    .filter(Jugador::isAlive)
-                    .max((j1, j2) -> Integer.compare(j1.getVotos(), j2.getVotos()))
-                    .orElse(null);
-            if (jugadorEliminado != null) {
-                jugadorEliminado.setAlive(false);
-                jugadorEliminado.setVotos(0); // Reiniciar votos después de la eliminación
-                jugadorRepository.save(jugadorEliminado);
-            }
-            // Reiniciar votos de todos los jugadores después de procesar
-            jugadores.forEach(j -> {
-                j.setVotos(0);
-                jugadorRepository.save(j);
-            });
+            procesarVotosAldeanos(partida);
+            procesarVotosLobos(partida);
         }
         return partida;
+    }
+
+    private void procesarVotosLobos(Partida partida) {
+        List<Jugador> jugadores = partida.getJugadores();
+        Jugador jugadorEliminado = jugadores.stream()
+                .filter(Jugador::isAlive)
+                .max((j1, j2) -> Integer.compare(j1.getVotos(), j2.getVotos()))
+                .orElse(null);
+        if (jugadorEliminado != null) {
+            jugadorEliminado.setAlive(false);
+            jugadorEliminado.setVotos(0); // Reiniciar votos después de la eliminación
+            jugadorRepository.save(jugadorEliminado);
+        }
+        // Reiniciar votos de todos los jugadores después de procesar
+        jugadores.forEach(j -> {
+            j.setVotos(0);
+            jugadorRepository.save(j);
+        });
+    }
+
+    private void procesarVotosAldeanos(Partida partida) {
+        List<Jugador> jugadores = partida.getJugadores();
+        Jugador jugadorEliminado = jugadores.stream()
+                .filter(Jugador::isAlive)
+                .max((j1, j2) -> Integer.compare(j1.getVotos(), j2.getVotos()))
+                .orElse(null);
+        if (jugadorEliminado != null) {
+            jugadorEliminado.setAlive(false);
+            jugadorEliminado.setVotos(0); // Reiniciar votos después de la eliminación
+            jugadorRepository.save(jugadorEliminado);
+        }
+        // Reiniciar votos de todos los jugadores después de procesar
+        jugadores.forEach(j -> {
+            j.setVotos(0);
+            jugadorRepository.save(j);
+        });
     }
 
     private List<Personaje> asignarRoles(int numeroDeJugadores) {
