@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/game")
@@ -62,6 +63,78 @@ public class GameController {
         return partida;
     }
 
+    @PostMapping("/partidas/{id}/voto-aldeano")
+    public Partida votarAldeano(@PathVariable Long id, @RequestBody VotoRequest votoRequest) {
+        Partida partida = partidaRepository.findById(id).orElse(null);
+        if (partida != null && "Día".equals(partida.getFase())) {
+            Optional<Jugador> jugadorOpt = jugadorRepository.findById(votoRequest.getJugadorId());
+            if (jugadorOpt.isPresent()) {
+                Jugador jugador = jugadorOpt.get();
+                if (jugador.isAlive()) {
+                    jugador.setVotos(jugador.getVotos() + 1);
+                    jugadorRepository.save(jugador);
+                }
+            }
+        }
+        return partida;
+    }
+
+    @PostMapping("/partidas/{id}/voto-lobo")
+    public Partida votarLobo(@PathVariable Long id, @RequestBody VotoRequest votoRequest) {
+        Partida partida = partidaRepository.findById(id).orElse(null);
+        if (partida != null && "Noche".equals(partida.getFase())) {
+            Optional<Jugador> jugadorOpt = jugadorRepository.findById(votoRequest.getJugadorId());
+            if (jugadorOpt.isPresent()) {
+                Jugador jugador = jugadorOpt.get();
+                if (jugador.isAlive()) {
+                    jugador.setVotos(jugador.getVotos() + 1);
+                    jugadorRepository.save(jugador);
+                }
+            }
+        }
+        return partida;
+    }
+
+    @PostMapping("/partidas/{id}/voto-vidente")
+    public String votarVidente(@PathVariable Long id, @RequestBody VotoRequest votoRequest) {
+        Partida partida = partidaRepository.findById(id).orElse(null);
+        if (partida != null && "Noche".equals(partida.getFase())) {
+            Optional<Jugador> jugadorOpt = jugadorRepository.findById(votoRequest.getJugadorId());
+            if (jugadorOpt.isPresent()) {
+                Jugador jugador = jugadorOpt.get();
+                if (jugador.isAlive()) {
+                    return jugador.getPersonaje().getTipo();
+                } else {
+                    return "El jugador está muerto";
+                }
+            }
+        }
+        return "Voto no válido";
+    }
+
+    @PostMapping("/partidas/{id}/procesar-votos")
+    public Partida procesarVotos(@PathVariable Long id) {
+        Partida partida = partidaRepository.findById(id).orElse(null);
+        if (partida != null) {
+            List<Jugador> jugadores = partida.getJugadores();
+            Jugador jugadorEliminado = jugadores.stream()
+                    .filter(Jugador::isAlive)
+                    .max((j1, j2) -> Integer.compare(j1.getVotos(), j2.getVotos()))
+                    .orElse(null);
+            if (jugadorEliminado != null) {
+                jugadorEliminado.setAlive(false);
+                jugadorEliminado.setVotos(0); // Reiniciar votos después de la eliminación
+                jugadorRepository.save(jugadorEliminado);
+            }
+            // Reiniciar votos de todos los jugadores después de procesar
+            jugadores.forEach(j -> {
+                j.setVotos(0);
+                jugadorRepository.save(j);
+            });
+        }
+        return partida;
+    }
+
     private List<Personaje> asignarRoles(int numeroDeJugadores) {
         List<Personaje> personajes = new ArrayList<>();
         int numeroDeLobos = 2;
@@ -87,5 +160,17 @@ public class GameController {
         }
 
         return personajes;
+    }
+}
+
+class VotoRequest {
+    private Long jugadorId;
+
+    public Long getJugadorId() {
+        return jugadorId;
+    }
+
+    public void setJugadorId(Long jugadorId) {
+        this.jugadorId = jugadorId;
     }
 }

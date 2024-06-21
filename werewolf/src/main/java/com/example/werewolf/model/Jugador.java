@@ -13,6 +13,7 @@ public class Jugador {
     private Long id;
     private String name;
     private boolean alive = true;
+    private int votos = 0;
 
     @ManyToOne
     private Personaje personaje;
@@ -48,5 +49,13 @@ public class Jugador {
 
     public void setPersonaje(Personaje personaje) {
         this.personaje = personaje;
+    }
+
+    public int getVotos() {
+        return votos;
+    }
+
+    public void setVotos(int votos) {
+        this.votos = votos;
     }
 }
